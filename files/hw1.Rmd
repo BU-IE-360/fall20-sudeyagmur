@@ -1,0 +1,18 @@
+---
+title: "Interesting Forecasting Applications with R"
+author: "Sude Yagmur Ozturk - IE360 - Fall 2020"
+---
+```{r,echo=FALSE,results="hide"}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+1. [Time series forecasting using ARIMA models](https://blogs.oracle.com/datascience/introduction-to-forecasting-with-arima-in-r)
+
+    This example is important because it introduces the forecasting methodology using ARIMA models in R. The steps are examining data, decomposing data, checking stationarity, choosing model order, fitting an ARIMA model.
+
+2.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
