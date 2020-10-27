@@ -1,4 +1,4 @@
-#Progress Journal
+# Progress Journal
 
 ## Homework 0 (27/10/2020)
 
