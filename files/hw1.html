@@ -371,8 +371,16 @@ summary {
 <ol style="list-style-type: decimal">
 <li><p><a href="https://blogs.oracle.com/datascience/introduction-to-forecasting-with-arima-in-r">Time series forecasting using ARIMA models</a></p>
 <p>This example is important because it introduces the forecasting methodology using ARIMA models in R. The steps are examining data, decomposing data, checking stationarity, choosing model order, fitting an ARIMA model.</p></li>
-<li></li>
 </ol>
+<p>2.My first forecast example is using mean, you simply calculate the sample mean and forecast the next data.</p>
+<pre class="r"><code>meanf(y,h)</code></pre>
+<p>3.You can copy the previous data (or previous year) for forecasting.</p>
+<pre class="r"><code>naive(y,h),snaive(y,h)</code></pre>
+<p>4.You can apply Holt-Winters Method. It is sum of baseline, trend, and seasonality components.</p>
+<pre class="r"><code>holt(x,type,alpha,beta,lead)</code></pre>
+<p>5.You can calculate the sample mean of latest n data (not all of them), this is simple moving average.</p>
+<p>6.You can equalize the slope of previous data to slope of forecasted data (drift).</p>
+<pre class="r"><code>rwf(y, h, drift=TRUE)</code></pre>
 
 
 

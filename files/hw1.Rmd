@@ -11,7 +11,28 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 
     This example is important because it introduces the forecasting methodology using ARIMA models in R. The steps are examining data, decomposing data, checking stationarity, choosing model order, fitting an ARIMA model.
 
-2.
+2.My first forecast example is using mean, you simply calculate the sample mean and forecast the next data.
+```{r, eval=FALSE}
+meanf(y,h)
+```
+
+3.You can copy the previous data (or previous year) for forecasting.
+```{r, eval=FALSE}
+naive(y,h),snaive(y,h)
+```
+
+4.You can apply Holt-Winters Method. It is sum of baseline, trend, and seasonality components.
+```{r, eval=FALSE}
+holt(x,type,alpha,beta,lead)
+```
+
+5.You can calculate the sample mean of latest n data (not all of them), this is simple moving average.
+
+6.You can equalize the slope of previous data to slope of forecasted data (drift).
+```{r, eval= FALSE}
+rwf(y, h, drift=TRUE)
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
