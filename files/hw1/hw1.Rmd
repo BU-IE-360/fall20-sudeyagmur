@@ -2,21 +2,20 @@
 title: "hw1"
 output: html_document
 ---
-##Homework 1
-###Yağmur Öztürk - 2017402126 - IE360 - Fall20 - 20.11.2020
+### Yağmur Öztürk - 2017402126 - IE360 - Fall20 - 20.11.2020
 
-#Collating Data from 3 Measures of Interest and Related Google Trends Keywords
-##1- Number of Marriages in 2019
+# Collating Data from 3 Measures of Interest and Related Google Trends Keywords
+## 1- Number of Marriages in 2019
 Data comes from TÜİK website, it includes monthly number of marriages between 2015 and 2019. Plot of monthly marriages in 2019 is below :
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 
 library(readxl)
-dugun2019 <- read_excel("GitHub/fall20-sudeyagmur/files/hw1/dugun2019.xls")
+
 library(readxl)
 library(readr)
 dugun2015_2019 <- read_excel("GitHub/fall20-sudeyagmur/files/hw1/dugun2015-2019.xlsx")
-
+dugun2019 <- read_excel("GitHub/fall20-sudeyagmur/files/hw1/dugun2019.xls")
 
 dugun_google <- read_csv("GitHub/fall20-sudeyagmur/files/hw1/dugun_google.csv")
 iftar_google <- read_csv("GitHub/fall20-sudeyagmur/files/hw1/iftar_google.csv")
@@ -27,7 +26,7 @@ plot(dugun2019,type="h",main="Marriages in 2019",xlab="Months",ylab="Number of M
 
 This pattern is seasonal because couples prefer warm and non-rainy summer nights for wedding organizations. 1-month-drop in May results from Ramadan. Similar pattern can be seen in previous years: 
 
-```{r , echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 d_2015<- c(dugun2015_2019[1,])
 d_2016<- c(dugun2015_2019[2,])
 d_2017<- c(dugun2015_2019[3,])
@@ -41,18 +40,18 @@ plot(c(1:12),d_2018,type="h", main="Marriages in 2018",xlab="Months",ylab="Numbe
 
 This is the Google Trends result for the keyword "düğün" in 2019. It means wedding in Turkish. Its pattern is highly correlated with marriages. 
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 plot(dugun_google,type="l",main="Google Trend 2019",xlab="Months",ylab="Popularity")
 ```
 
 Also, we can see that our Ramadan assumption is true, by looking at Google Trends result for the keyword "iftar saatleri".
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 plot(iftar_google,type="l",main="Google Trend 2019",xlab="Months",ylab="Popularity")
 ```
 
 These are the boxplots of keyword "düğün" in 2019 and marriages between 2015-2019. These are also have same pattern. (Note that I took data between 2015-2019 to create a proper boxplot and their patterns are quite similar)
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 boxplot(dugun_google$dugun[1:4],dugun_google$dugun[5:8],dugun_google$dugun[9:13],
         dugun_google$dugun[14:17],dugun_google$dugun[18:21],dugun_google$dugun[22:26],dugun_google$dugun[27:30],
         dugun_google$dugun[31:34],dugun_google$dugun[35:39],dugun_google$dugun[40:43],dugun_google$dugun[44:47],
@@ -60,10 +59,10 @@ boxplot(dugun_google$dugun[1:4],dugun_google$dugun[5:8],dugun_google$dugun[9:13]
 boxplot(dugun2015_2019,main = "Boxplot of Marriages (2015-2019)",xlab= "Months", ylab="Number of Marriages")
 ```
 
-##2- Citizens who Went Abroad in 2019
+## 2- Citizens who Went Abroad in 2019
 Data comes from TÜİK website, including monthly numbers of Turkish citizens who went abroad in 2019. Plot is below:
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 library(readxl)
 library(readr)
 outgoing <- read_excel("GitHub/fall20-sudeyagmur/files/hw1/outgoing.xls")
@@ -74,14 +73,14 @@ plot(c(1:12),as.numeric(outgoing[1,]),type="h",main="Citizens who Went Abroad in
 
 This data has also a seasonal pattern. It seems that people mostly prefer going abroad in Summer. I thought that these people may consider buying a suitcase in the same period of years, whether they travel for holiday or not. So, here is the Google Trends result for the keyword "valiz". It means suitcase in Turkish.
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 plot(valiz_google,type ="l",main="Google Trend 2019",xlab="Months",ylab="Popularity" )
 
 ```
 
 They are highly correlated, even if every "valiz" will not be bought for going abroad. It can be concluded that people's general pattern of travel is like the one for abroad. These are boxplots of both "valiz" and number of people who went abroad.
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 boxplot(valiz_google$valiz[1:4],valiz_google$valiz[5:8],valiz_google$valiz[9:13],
         valiz_google$valiz[14:17],valiz_google$valiz[18:21],valiz_google$valiz[22:26],valiz_google$valiz[27:30],
         valiz_google$valiz[31:34],valiz_google$valiz[35:39],valiz_google$valiz[40:43],valiz_google$valiz[44:47],
@@ -89,10 +88,10 @@ boxplot(valiz_google$valiz[1:4],valiz_google$valiz[5:8],valiz_google$valiz[9:13]
 boxplot(outgoing,main="Boxplot of Keyword",xlab="Months",ylab="Popularity")
 ```
 
-##2- Retail Sales with Mail Order Index 
+## 3- Retail Sales with Mail Order Index 
 This data comes from TÜİK's website. It includes retail sales volume, the ones with mail order, between 2015 and 2019. Its base year is 2010. Mail order refers to online shopping. 
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 eperakende <- read_excel("GitHub/fall20-sudeyagmur/files/hw1/eperakende.xls")
 eticaret_google <- read_csv("GitHub/fall20-sudeyagmur/files/hw1/eticaret_google.csv")
 plot(c(2015,2016,2017,2018,2019),c(sum(eperakende$`2015`),sum(eperakende$`2016`),sum(eperakende$`2017`),sum(eperakende$`2018`),sum(eperakende$`2019`)),type="h", 
@@ -101,7 +100,7 @@ plot(c(2015,2016,2017,2018,2019),c(sum(eperakende$`2015`),sum(eperakende$`2016`)
 
 These are monthly retail sales index for each year. We can conclude that online shopping goes up since the beggining of 2015.
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 plot(eperakende$`2015`,type="l", main="Retail with Mail Order Index(2015)",xlab="Months",ylab="Index")
 plot(eperakende$`2016`,type="l", main="Retail with Mail Order Index(2016)",xlab="Months",ylab="Index")
 plot(eperakende$`2017`,type="l", main="Retail with Mail Order Index(2017)",xlab="Months",ylab="Index")
@@ -109,20 +108,19 @@ plot(eperakende$`2018`,type="l", main="Retail with Mail Order Index(2018)",xlab=
 plot(eperakende$`2019`,type="l", main="Retail with Mail Order Index(2019)",xlab="Months",ylab="Index")
 ```
 
-Surprisingly, Google Trends result for the keyword "e-ticaret" has not a similar pattern. Also, "alışveriş sitesi", "trendyol", or "online alışveriş" keywords do not go up like these graphs above. This is the result of "e-ticaret", e-commerce for Turkish:
+Surprisingly, Google Trends result for the keyword "e-ticaret" has not a similar pattern. Because this terhm is always popular with fluctuations. Also, "alışveriş sitesi", "trendyol", or "online alışveriş" keywords do not go up like these graphs above. This is the result of "e-ticaret", e-commerce for Turkish:
 
-```{r,echo=FALSE}
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
 plot(eticaret_google,type="l",main = "Google Trend (2015-2019)", xlab="Years",ylab="Popularity")
 ```
 
 These are the boxplots for year 2019.
 
-```{r,echo=FALSE}
-boxplot(valiz_google$valiz[1:4],valiz_google$valiz[5:8],valiz_google$valiz[9:13],
-        valiz_google$valiz[14:17],valiz_google$valiz[18:21],valiz_google$valiz[22:26],valiz_google$valiz[27:30],
-        valiz_google$valiz[31:34],valiz_google$valiz[35:39],valiz_google$valiz[40:43],valiz_google$valiz[44:47],
-        valiz_google$valiz[48:52],main="Boxplot of Travelers",xlab="Months",ylab="Number of People")
-boxplot(outgoing,main="Boxplot of Keyword",xlab="Months",ylab="Popularity")
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+boxplot(eticaret_google$`e-ticaret`[1:52],eticaret_google$`e-ticaret`[53:104],eticaret_google$`e-ticaret`[105:157],
+        eticaret_google$`e-ticaret`[158:209],eticaret_google$`e-ticaret`[210:261],names =c(2015,2016,2017,2018,2019),main="Boxplot of Online Retail Sales",xlab="Months",ylab="Index")
+boxplot(eperakende,main="Boxplot of Keyword",xlab="Months",ylab="Popularity")
 ```
 
 ***
+## [Here](files\hw1.Rmd) is my Rmd file including code chunks.
