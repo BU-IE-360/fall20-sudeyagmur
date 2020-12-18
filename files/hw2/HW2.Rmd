@@ -8,19 +8,186 @@ library("GGally")
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Correlation Analysis on Measures of Credit/ Debit Cards 
+### Sude Yagmur Ozturk
 
+# Introduction
 
+  Turkey, like other countries in the world, include electronic payment systems to its banking and monetary structure. This new way of transferring money has also changed people's payment behavior, and a few terms came into our lives. Credit cards and debit cards are two of these terms. Credit/debit cards have some advantages comparing to cash. For example, cards provide more security than cash due to its traceability and password. Also, carrying these cards is more slighter than carrying all assets with cash. Adding banks' benefits for commissions and government's benefits for more taxable transactions into these user advantages, it was inevitable that credit/debit cards would be used more and more. 
+  Debit cards have not much advantages other than ease of use. Credit cards have remarkable extra two advantages: Capability to delay payments and to make installment plan for larger payments. Customers were provided financial opportunity to buy items that are expensive enough not to buy at once. These two features also bring banks in money, they can make interest income with debts. Thus, banks started to release different types of credit cards in order to influence all customer segments. They are trying to specialize their credit card by extra campaigns and special installment plan offers. This competition especially between private banks is exaggerated, now such cards exist that gold, platinum, diamond. Their special offers can be anything like not waiting in queue in airport, duplicating your car's oil for free etc.
+  Ease to pay, crazy installment plans and campaigns merged with increase in shopping and consuming. These accelerated usage of credit/debit cards and it can be expected that their usage data show a trend line. However, consequences followed afterwards. Individual credit card debits reached huge amounts in Turkey. Government forbade installment plans and late payments for some expensive products in 2014 to inhibit going into debt with credit cards. Media made propaganda to inform credit card customers about consequences. If these precautions answer the purpose, they may have flatten the curve. That is why I chose three data sets about measures of credit/debit cards, between April 2015 and September 2020. 
+  There are 3 measure in data set below. The data is taken from Electronic Data Delivery System of Central Bank of Turkey: [EVDS](https://evds2.tcmb.gov.tr/index.php?/evds/serieMarket) .  First measure is monthly credit/debit cards transaction volume in thousand Turkish Lira, in second column. Second measure is monthly number of operations with credit/debit cards, in third column. Third measure is monthly credit card usage index in Turkey, respect to 04/2015 having 100 index point, in fourth column. First column is date, 1st day of every month represents the whole month. For example, 2018-03-01 involves the information about March 2018. This study covers data from April 2015 till September 2020, due to the availability of index measure. It is long enough to study correlation analysis.
+  Examining correlation between number of operations and transaction volume could be meaningful for inspecting whether change in transfer amounts depend on transaction numbers or not. Also, correlation information between the first two measures and usage index could provide insight about contribution the first two measures to calculate the third one. 
+  
+# Manipulation of Data
 
-```{r cars}
-summary(cars)
+  Before jumping into analysis, data must be imported from related excel file with read_excel. Some adjustments and manipulation of data is required for a meaningful output and produce graphs easily. Data.table structure gives more opportunity for selecting and reshaping data, also Date format is more useful when subject is time series. Here is my code chunk to read  data with R, structure and first entries of data. For more information, [here](C:\Users\Lenovo\Documents\GitHub\fall20-sudeyagmur\files\hw2) is my Rmd file with whole code chunks.
+
+```{r, include= TRUE,echo = TRUE}
+kredi_kartlari <- read_excel("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/kredi_kartlari2.xlsx")
+credit_cards <- as.data.table(kredi_kartlari)
+credit_cards[,Date := ymd(paste0(Date,"-01"))]
+str(credit_cards)
+head(credit_cards)
 ```
 
-## Including Plots
+# Data Visualization and Analysis One by One
 
+  First of all, visualizing the big picture must be done one by one in order to identify measures of interest. Creating histograms for each year is a good way to start to analyze behavior, before studying correlation with pairs.
+  
+## Credit and Debit Cards' Transaction Volume
 
+  These histograms below includes density of transaction volume with credit/debit cards. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. These numbers state transaction in thousands of Turkish Lira. The are 15 bins in the x axis.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, echo=FALSE}
+ggplot(data = credit_cards, aes(x= credit_transaction_vol))+
+  geom_histogram(aes(y=..density..), color="aquamarine3", fill="aquamarine2", bins = 15)+
+  geom_density(alpha=0.3, fill="aquamarine1", colour="darkseagreen3") +
+  labs(title = "Histograms of Credit/Debit Card Transaction Volume in Turkey over 2015-2020 observed Monthly", 
+       x = "Transaction Volume (Thousand TL)",y = "Density") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45,hjust = 0.5)) +
+  facet_wrap(~year(Date))
 ```
+
+  A brief glimpse is enough to say that mean of transaction volume is increasing every year. This informs the reader about a trend line with positive slope. Also, variance of this measure is increasing every year, a normal-like distribution seem to have tendency to uniform-like distribution. These increments in variance can be caused by different increase in purchasing power in different social economic classes, or it is just a result of increasing variance of transactions. We cannot say anything about seasonality or cyclic structure from these histograms. It will be mentioned with plots of three measures below.
+  
+## Operation Amount with Credit and Debit Cards
+  
+  These histograms below includes number of operations with credit/debit cards. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. The are 15 bins in the x axis.
+  
+```{r,echo = FALSE}
+ggplot(data = credit_cards, aes(x= credit_operation_amount))+
+  geom_histogram(aes(y=..density..), color="lightpink1", fill="lightpink2", bins = 15)+
+  geom_density(alpha=0.3, fill="mistyrose2", colour="mistyrose3") +
+  labs(title = "Histograms of Credit/Debit Card Operations in Turkey over 2015-2020 observed Monthly", 
+       x = "Number of Operations",y = "Density") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45,hjust = 0.5)) +
+  facet_wrap(~year(Date))
+```
+  
+  These histograms have similar behavior with the first ones. Mean is increasing over years, also variance is increasing. It is a difference that operation amounts have more gaps between values, compared to transaction volume. Parts of society may start to use cards and cash in a more distinct ways.
+  
+## Credit Card Usage Index (April 2015 = 100)
+
+  These histograms below includes credit card usage index in Turkey. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. The are 10 bins in the x axis.
+
+```{r , echo = FALSE}
+ggplot(data = credit_cards, aes(x= credit_index))+
+  geom_histogram(aes(y=..density..), color="lightblue1", fill="lightblue2", bins = 10)+
+  geom_density(alpha=0.3, fill="lightcyan2", colour="lightcyan3") +
+  labs(title = "Histograms of Index of Payments with Cards in Turkey over 2015-2020 observed Monthly", 
+       x = "Index (04-2015 = 100)",y = "Density") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45,hjust = 0.5)) +
+  facet_wrap(~year(Date))
+
+```
+  
+  2015 does not give descriptive knowledge, due to lack of data and it has start index 100. These index histograms show that credit card usage has never decreased comparing 04/2015, because all indexes are greater than zero. By mean of 2019, we can say that usage of credit cards is duplicated in 4 years, and continues to increasing. However, there is remarkable uniformity in 2020. This reminds me that some people change their payment behavior from cash to card, others do not. 
+  
+# Visual Analysis Combining 3 Measures
+
+## Boxplot of 3 Measures
+
+```{r, echo = FALSE}
+credit_cards %>% 
+  gather(cards, new_cols , credit_transaction_vol, credit_operation_amount,credit_index ) %>% 
+  ggplot(aes(x = Date, y = new_cols , fill = factor(year(Date))))+
+  geom_boxplot()+
+  scale_fill_brewer(palette = "YlGn", name = "Years") +
+  labs(title = "Boxplots of Measures of Credit/Bank Cards Usage 2015-2020", y = "Amount")+
+  theme_minimal()+
+  facet_grid(rows = vars(cards),scales = 'free')    
+
+```
+
+  These boxplots gives general knowledge about dissemination of 3 data sets. Having increasing trends and variances over years, there is a signal that these 3 measures are highly correlated. Operation amount has the most variance, then transaction volumes and last indexes. The reader should keep in mind that scales are different for usage index, transaction volume, and number of operations. Index ranges between 100-300, but number of operation is in millions, and transaction volumes in billions. For a detailed analysis, we should start examine values in monthly manner.
+  
+## Graph for 3 Measures  
+  
+```{r, echo= FALSE}
+cols <- c("Number of Operations" = "orange1", "Transaction Volume" = "tomato","Usage Index" = "firebrick")
+ggplot(credit_cards, aes(x = Date)) +
+  geom_bar(aes(y= (credit_operation_amount), fill = "Number of Operations"), color = "orange2", stat="identity") +
+  geom_bar(aes(y=credit_transaction_vol, fill = "Transaction Volume"), color = "brown2", stat="identity") +
+  geom_line(aes(y = credit_index*2000000,color = "Usage Index"),size = 1) + 
+  labs(title = "Measures of Credit/Debit Card Usage in Turkey between 2015-2020 Reported Monthly", 
+       x = "Date") +
+  scale_x_date(date_breaks = "years") +
+  scale_y_continuous("Volume (Thousand TL) / Operations", sec.axis = sec_axis(~./2000000, name = "Index")) +
+  scale_color_manual(values = cols) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.5), legend.position = "right", legend.title = element_blank(),
+        axis.line.y.right = element_line(color="firebrick"), axis.text.y.right = element_text(color = "firebrick"), 
+        axis.title.y.right = element_text(color="firebrick"))
+
+
+```
+  
+  Orange bars stand for number of operations, blue bars stand for transaction volume, and brown line stands for credit card usage index. Note that y axis in the right is for Index, due to its different scale. These three measures went up and down together, implying a high correlation. Also, there is some repeated fluctuations over years, meaning that there is cyclic pattern due to seasonality. Credit / debit card usage measures have seasonal drops in autumn, higher values in summer. Last cycle is different than previous 5 cycles, having an huge drop caused by pandemic. However, measures could reach the normally-predicted levels and continue to increase in overall time.
+
+# Correlation Analysis
+
+  Correlations between paired columns are below. First one is correlation between transaction volume and operation amount, second is correlation between transaction volume and credit card usage index, third one is correlation between credit card usage index and operation amount. These number shows these 3 measures are highly correlated, adding the numeric result into our discussion above. 
+
+```{r, echo = FALSE}
+print(cor(credit_cards$credit_transaction_vol, credit_cards$credit_operation_amount))
+print(cor(credit_cards$credit_transaction_vol, credit_cards$credit_index))
+print(cor(credit_cards$credit_index, credit_cards$credit_operation_amount))
+```
+Are the numbers great enough to say that they are correlated? Thanks to R, we can simply do a correlation test. This test uses Pearson's correlation test by default. Null hypothesis is that there is a significant correlation between two subject measures. In these tests, there is not a significant value in data to reject null hypothesis, in 95% confidence interval.
+
+```{r, echo = FALSE}
+
+print(cor.test(credit_cards$credit_transaction_vol, credit_cards$credit_operation_amount))
+print(cor.test(credit_cards$credit_transaction_vol, credit_cards$credit_index))
+print(cor.test(credit_cards$credit_index, credit_cards$credit_operation_amount))
+
+```
+
+## Scatter Plots and Correlation Table
+
+  Scatter plots are useful to see correspondent behavior between two data sets. Distributions in diagonal, correlations in upper triangle, and scatter plots in lower triangle are below. *** means that p-value is low enough for alpha = 0.001 (99,9% confidence interval). We have covered distribution with histograms, correlation with Pearson's tests, scatter plots are new.
+
+
+```{r, echo = FALSE}
+ggpairs(credit_cards[,-1]) + theme_minimal() + 
+  labs(title ="Scatter Plots and Correlations of Credit/Debit Card Usage in Turkey 2015-2020")+
+  theme(axis.text.x = element_text(angle = 45,hjust = 0.5))
+```
+
+  All three scatter plots seem to be good enough to fit in a line. Credit / debit cards' transaction volume cross operation amount scatter plot has the best linearity. Also, this pair has the correlation number that is closest to 1. Thus, it can be concluded that increase in transaction volume is mainly derived from increase in transaction numbers. Transaction volume and operation number data sets cross usage index plots have slight difference than a line, but their correlation value are also good enough. This indicates that transaction volume and operation amount have considerable role in calculation of usage index, but there are some other components that we can not cover.
+  
+  
+# Conclusion
+
+  In this study, the main question was "Are there any correlation between credit/ debit cards transaction volume, number of operations, and their usage index?". We found that transaction volume- number of operations, number of operations - usage index, usage index - transaction volume pairs are highly correlated, null hypothesis could not be rejected at 95% significance level. Also, we could catch that these three measures have trend line with some seasonal fluctuations, with their increasing mean and variance. The reader could see the effect of pandemic in the beginning of 2020. 
+  Consequently, change in credit/debit cards' transaction volume is caused so far as change in number of operations with credit/debit card. Credit card usage index numbers is a result of some complicated calculations, it can be said that transaction volume and number of operations are important input for these calculations. Linear model that considers transaction volume and operation amount as independent variable, and credit card usage index as dependent variable. We could check whether our linear model is suitable enough or has a significant errors, bu summary function.
+  
+  
+```{r, include = TRUE}
+fit <- lm(credit_index~credit_operation_amount + credit_transaction_vol, data = credit_cards)
+summary(fit)
+
+```
+  P-value of overall model is very small and can be considered as 0, intercept and our two variables' p-values are also small enough in %99,9 confidence interval. Adjusted R-squared is a term that shows our model's values fits decently in original data. It is close to 1, so this linear model could be a good start to make regression model for these data sets.
+  
+# Appendix
+
+[Rmd file](C:\Users\Lenovo\Documents\GitHub\fall20-sudeyagmur\files\hw2)
+
+# References
+
+[EVDS](https://evds2.tcmb.gov.tr/index.php?/evds/serieMarket)
+[Stack Overflow](https://stackoverflow.com/)
+[Towards Data Science](https://towardsdatascience.com/)
+[STHDA](http://www.sthda.com/english/)
+[R Documentation](https://www.rdocumentation.org/)
+
+
+
+
+
 
