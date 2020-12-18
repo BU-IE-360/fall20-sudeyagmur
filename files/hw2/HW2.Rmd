@@ -1,0 +1,26 @@
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+library(data.table)
+library(readxl)
+library(lubridate)
+library(ggplot2)
+library(tidyr)
+library("GGally") 
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
