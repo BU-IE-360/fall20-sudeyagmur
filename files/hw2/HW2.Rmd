@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
   
 # Manipulation of Data
 
-  Before jumping into analysis, data must be imported from related excel file with read_excel. Some adjustments and manipulation of data are required for a meaningful output and easy forming of graphs. Data.table structure gives more opportunity for selecting and reshaping data. Also, Date format is more useful when subject is time series. Here are my code chunk to read  data with R, structure and first entries of data. For more information, [here](\files\hw2\HW2.Rmd) is my Rmd file with whole code chunks.
+  Before jumping into analysis, data must be imported from related excel file with read_excel. Some adjustments and manipulation of data are required for a meaningful output and easy forming of graphs. Data.table structure gives more opportunity for selecting and reshaping data. Also, Date format is more useful when subject is time series. Here are my code chunk to read  data with R, structure and first entries of data. For more information, [here](\fall20-sudeyagmur\files\hw2\HW2.Rmd) is my Rmd file with whole code chunks.
 
 ```{r, include= TRUE,echo = TRUE}
 kredi_kartlari <- read_excel("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/kredi_kartlari2.xlsx")
@@ -176,7 +176,7 @@ summary(fit)
   
 # Appendix
 
-[Rmd file](\files\hw2\HW2.Rmd)
+[Rmd file](\fall20-sudeyagmur\files\hw2\HW2.Rmd)
 
 # References
 
