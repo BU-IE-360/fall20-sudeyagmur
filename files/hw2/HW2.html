@@ -438,7 +438,7 @@ summary {
 </div>
 <div id="manipulation-of-data" class="section level1">
 <h1>Manipulation of Data</h1>
-<p>Before jumping into analysis, data must be imported from related excel file with read_excel. Some adjustments and manipulation of data are required for a meaningful output and easy forming of graphs. Data.table structure gives more opportunity for selecting and reshaping data. Also, Date format is more useful when subject is time series. Here are my code chunk to read data with R, structure and first entries of data. For more information, <a href="C:\Users\Lenovo\Documents\GitHub\fall20-sudeyagmur\files\hw2">here</a> is my Rmd file with whole code chunks.</p>
+<p>Before jumping into analysis, data must be imported from related excel file with read_excel. Some adjustments and manipulation of data are required for a meaningful output and easy forming of graphs. Data.table structure gives more opportunity for selecting and reshaping data. Also, Date format is more useful when subject is time series. Here are my code chunk to read data with R, structure and first entries of data. For more information, <a href="C:\Users\Lenovo\Documents\GitHub\fall20-sudeyagmur\files\hw2\HW2.Rmd">here</a> is my Rmd file with whole code chunks.</p>
 <pre class="r"><code>kredi_kartlari &lt;- read_excel(&quot;C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/kredi_kartlari2.xlsx&quot;)
 credit_cards &lt;- as.data.table(kredi_kartlari)
 credit_cards[,Date := ymd(paste0(Date,&quot;-01&quot;))]
@@ -569,7 +569,7 @@ summary(fit)</code></pre>
 </div>
 <div id="appendix" class="section level1">
 <h1>Appendix</h1>
-<p><a href="C:\Users\Lenovo\Documents\GitHub\fall20-sudeyagmur\files\hw2">Rmd file</a></p>
+<p><a href="C:\Users\Lenovo\Documents\GitHub\fall20-sudeyagmur\files\hw2\HW2.Rmd">Rmd file</a></p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
