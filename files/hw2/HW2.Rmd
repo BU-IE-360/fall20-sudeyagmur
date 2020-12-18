@@ -37,7 +37,7 @@ head(credit_cards)
   
 ## Credit and Debit Cards' Transaction Volume
 
-  These histograms below includes density of transaction volume with credit/debit cards. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. These numbers state transaction in thousands of Turkish Lira. The are 15 bins in the x axis.
+  These histograms below includes density of transaction volume with credit/debit cards. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. These numbers state transaction in thousands of Turkish Lira. There are 15 bins in the x axis.
 
 ```{r, echo=FALSE}
 ggplot(data = credit_cards, aes(x= credit_transaction_vol))+
@@ -54,7 +54,7 @@ ggplot(data = credit_cards, aes(x= credit_transaction_vol))+
   
 ## Operation Amount with Credit and Debit Cards
   
-  These histograms below includes number of operations with credit/debit cards. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. The are 15 bins in the x axis.
+  These histograms below includes number of operations with credit/debit cards. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. There are 15 bins in the x axis.
   
 ```{r,echo = FALSE}
 ggplot(data = credit_cards, aes(x= credit_operation_amount))+
@@ -71,7 +71,7 @@ ggplot(data = credit_cards, aes(x= credit_operation_amount))+
   
 ## Credit Card Usage Index (April 2015 = 100)
 
-  These histograms below includes credit card usage index in Turkey. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. The are 10 bins in the x axis.
+  These histograms below includes credit card usage index in Turkey. Note that 2015 has 9 monthly values and 2020 has 10 monthly values. There are 10 bins in the x axis.
 
 ```{r , echo = FALSE}
 ggplot(data = credit_cards, aes(x= credit_index))+
