@@ -1,0 +1,168 @@
+# Mortgaged Housing Sales Forecasting 
+### Sude Yagmur Ozturk
+
+ The aim of this study is to build a model by analyzing the monthly data between January 2013 and November 2020 in order to forecast the mortgaged housing sales in December 2020. 
+
+# Introduction
+
+  First of all, I did not know what mortgaged housing sale is when I was assigned this topic. My starting point was to research into news and blogs about mortgaged sales, which are included in References section. Then I called my parents to have more information and verify my findings. I learned that mortgaged sales are a type of housing sales which buyer can lose the mortgaged building when they can not pay their debts. Buyers generally take out mortgagae loans from a bank to buy a building and bank mortagaes the building as assurance in case of insolvency. A mortgagaed house cannot be sold until it is released, but second hand sales occur by changing the mortgagor. This procedure does not seem safe, so real estate websites do not suggest that. Also, this procedure occurs rarely. Consequently, I thought that people usually buy mortgaged houses by owing to banks. In my opinion, two factors can mainly affect mortgaged sales: First one is mortgage loan interest rates and the second one is indices of consumer tendency in housing. Owing to a bank to buy a building makes sense when mortgage loan insterest rates decline, vice versa. Also, indices of consumer tendency in housing can be a sign about when people want to buy a building. 
+  The data are taken from Data Delivery System of Central Bank of the Republic of Turkey: EDVS[https://evds2.tcmb.gov.tr/] . There are monthly mortgaged sales statistics, monthly mortgage loans interest rate, and index of consumer tendency in housing between 2013 and 2020. I will first extract and manipulate data, then visualize and analyze the three of them, and build a linear regression model to forecast mortgaged sales statistics in December 2020.
+  
+# Manipulation of Data
+
+  I firstly did manipulation, such as deleting Turkish characters in rows and unnecessary notes, of the data in Excel. I changed data format into data.table, and changed date values format from character into Date. Therefore, I pasted "-01" at the end of all months. For examplei 1st of March represents the whole month -March. For more information, my Rmd file with code chunks is in Appendix. The structure and first entries of mortgaged sales statistics are below.
+
+```{r, echo=FALSE,message=FALSE}
+library(readxl)
+library(data.table)
+library(lubridate)
+library(ggplot2)
+library(tidyr)
+library("GGally") 
+library(fpp)
+sales_mortgaged <- as.data.table(read_excel("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/sales_mortgaged.xlsx"))
+tendency_housing <- as.data.table(read_excel("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/tendency_housing.xlsx"))
+mortgage_loan_interest <- as.data.table(read_excel("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/mortgage_loan_interest.xlsx"))
+sales_mortgaged[,Date := ymd(paste0(Date,"-01"))]
+tendency_housing[,Date := ymd(paste0(Date,"-01"))]
+mortgage_loan_interest[,Date := ymd(paste0(Date,"-01"))]
+str(sales_mortgaged)
+head(sales_mortgaged)
+
+```
+
+# Data Visualization and Analysis
+
+  There is a line graph which represent monthly mortgaged housing sales from January 2013 to November 2020 below. My aim of study is to find a value for December 2020 by using this data as dependent values.
+
+```{r, echo = FALSE}
+ggplot(sales_mortgaged,aes(x=Date))+
+  geom_line(aes(y=Mortgaged_Sales),size = 0.8, color="blue")+ theme_minimal() + 
+  labs(title = "Monthly Mortgaged Housing Sales between 2013 and 2020",x = "Date", y= "Mortgaged Sales")
+  
+```
+
+  Graph has stationary mean and slightly increasing variance with a little seasonality until the middle of 2018. After that, some huge drops and increases break stationarity. Also, we have a gigantic outlier in August 2020 due to the interest discount in mortgage loans for pandemic. This discount has to be judged by considering the inflation.
+  Second graph is for interests in mortgage loans having monthly values between January 2013 and January 2021. This data will be used as independent values in linear model. Therefore, information in December 2020 is needed.
+
+```{r, echo=FALSE}
+ggplot(mortgage_loan_interest,aes(x=Date))+
+  geom_line(aes(y=interest_rate),size = 0.8, color="purple")+ theme_minimal() + 
+  labs(title = "Monthly Interests in Mortgaged Loans between 2013 and 2021",x = "Date", y= "Interest Rate")
+
+```
+
+  These data are less stationary than the first one, having more jumps after 2018. Remarkable values in 2019 and 2020 differ opposite to Morthgaged Sales, so I expect a negative correlation. Between 2014-2018, autocorrelation can be seen in every 24 months. 
+  Third graph shows the indices of consumer tendency in housing which are estimated by surveys. These numbers are participants' rate of the probabilty of buying or constructing a building in next 12 months.
+  
+```{r, echo = FALSE}
+ggplot(tendency_housing,aes(x=Date))+
+  geom_line(aes(y=tendency),size = 0.8, color="green")+ theme_minimal() + 
+  labs(title = "Tendency to Housing Sales between 2013 and 2020",x = "Date", y= "Tendency Index")
+
+
+```
+
+  This graph has a negative-sloped trend line until the end of 2018, a positive-sloped trend line afterwards. It seems that the graph has a stationary variance in general and has seasonal effects. I do not think that this second independent variable has a significant correlation with mortgaged sales statistics, but it can be a signal for people's purchasing power and future exceptations. If one has not enough purchasing power for housing, they may apply for a mortgage loan.
+  Before building a model, I want to check numerically if there is a correlation between these three data. 
+  
+```{r,echo=FALSE}
+all_combined <- as.data.table(cbind(sales_mortgaged$Mortgaged_Sales,tendency_housing$tendency[-96],mortgage_loan_interest$interest_rate[-c(96,97)]))
+colnames(all_combined) <- c("Mortgaged Sales","Tendency Index","Loan Interest")
+
+ggpairs(all_combined)
+```
+
+  As expected, interest of mortgage loan has significanly negative correlation with tendency to buy a building and with mortgaged sales. Also, tendency indices have positive but relatively less significant correlation with mortgaged sales. I expect that tendency indices' contribution to my model will be low.
+  
+# Adjustments for Stationarity
+
+  From first visual inspection, change in variance in mortgaged sales can be seen small. However, y-axis differ in the range of thousands. Thus, we need to take logarithm of these values for a stationary variance. 
+
+```{r, message = FALSE}
+sales_mortgaged[,log_mortgaged := log(Mortgaged_Sales)]
+```
+```{r, echo = FALSE}
+ggplot(sales_mortgaged,aes(x=Date))+
+  geom_line(aes(y=log_mortgaged),size = 0.8, color="blue")+ theme_minimal() + 
+  labs(title = "Monthly Mortgaged Housing Sales between 2013 and 2020 (log)",x = "Date", y= "Mortgaged Sales (log)")
+  
+```
+
+  Secondly, I need to add month as variables in order to get rid of seasonality. There is the first shape of my linear model below.
+
+```{r, message= FALSE}
+fit<- lm(sales_mortgaged$log_mortgaged ~ as.factor(month(sales_mortgaged$Date)))
+summary(fit)
+checkresiduals(fit)
+```
+
+  According to p-value, residuals, and adjusted R-squared, this model is too horrible to forecast. I will try to add a trend line between 2018-11 and 2020-07.
+  
+```{r, message=FALSE}
+sales_mortgaged[71:91,trend := 1:21][is.na(trend) == TRUE, trend := 0]
+fit<- lm(sales_mortgaged$log_mortgaged ~ sales_mortgaged$trend + as.factor(month(sales_mortgaged$Date)))
+summary(fit)
+checkresiduals(fit)
+```
+
+  Adding a trend line does not contribute our model to improve, so it will not help data to be stationary. Taking logarithm and adding month information is sufficient.
+  
+# Adding Independent Variables
+
+  I think that the interest in mortgage loan as an independent variable can improve my linear model. I expect the coefficient of this variable will be negative. I excluded the last two rows of interest rates for same vector lengths, 95.
+  
+```{r, message = FALSE}
+fit<- lm(sales_mortgaged$log_mortgaged ~ mortgage_loan_interest$interest_rate[-c(96,97)] + as.factor(month(sales_mortgaged$Date)))
+summary(fit)
+checkresiduals(fit)
+```
+
+  Hoping that I have better result, I added indices of tendency into my linear model.
+  
+```{r, message = FALSE}
+
+fit<- lm(sales_mortgaged$log_mortgaged ~ tendency_housing$tendency[-96]+ mortgage_loan_interest$interest_rate[-c(96,97)] + as.factor(month(sales_mortgaged$Date)))
+summary(fit)
+checkresiduals(fit)
+```
+
+  According to residual standard error and adjusted R-squared, it looks like I achieved a sufficient linear model. Distribution of residuals seem like white noise with some outliers. If I try to delete these outliers, my model may encounter to overfitting.
+  
+# Conclusion
+
+  Here is my fitted values of final model and real values below.
+
+```{r, echo = FALSE}
+cols <- c("Real Values" = "red", "Fitted Values" = "blue")
+ggplot(sales_mortgaged,aes(x=Date))+
+  geom_line(aes(y=Mortgaged_Sales, color = "Real Values"),size = 0.8)+ 
+  geom_line(aes(y=exp(fit$fitted.values), color = "Fitted Values"),size = 0.8) + theme_minimal() + 
+  scale_color_manual(values = cols) +
+  theme(legend.title = element_blank())+
+  labs(title = "Real versus Fitted Values",x = "Date", y= "Mortgaged Sales") 
+```
+
+  Here is my residuals.
+
+```{r, echo =FALSE}
+plot(fit$residuals,type="l", ylab = "Residuals")
+```
+
+  According to this model, my mortgaged housing sales forecast for December 2020 is below.
+  
+```{r,message =FALSE}
+estimated_val <- exp(12.272350 -0.119225*mortgage_loan_interest$interest_rate[96] + -0.049842*tendency_housing$tendency[96] + 0.204184)
+print(estimated_val)
+```
+
+# Appendix
+
+[Rmd file](\fall20-sudeyagmur\files\hw3\HW3.Rmd)
+  
+# References
+
+[What is mortgaged sales?](https://erolemlak.com/tr/blog/ipotek-nedir-ipotekli-ev-almak-ve-satmak.html)
+[Buying a mortgaged house](https://www.zingat.com/blog/ipotekli-ev-hakkinda-bilmeniz-gereken-her-sey/)
+[EVDS](https://evds2.tcmb.gov.tr/index.php?/evds/serieMarket)
+
