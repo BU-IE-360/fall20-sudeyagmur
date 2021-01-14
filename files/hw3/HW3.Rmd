@@ -5,12 +5,12 @@
 
 # Introduction
 
-  First of all, I did not know what mortgaged housing sale is when I was assigned this topic. My starting point was to research into news and blogs about mortgaged sales, which are included in References section. Then I called my parents to have more information and verify my findings. I learned that mortgaged sales are a type of housing sales which buyer can lose the mortgaged building when they can not pay their debts. Buyers generally take out mortgagae loans from a bank to buy a building and bank mortagaes the building as assurance in case of insolvency. A mortgagaed house cannot be sold until it is released, but second hand sales occur by changing the mortgagor. This procedure does not seem safe, so real estate websites do not suggest that. Also, this procedure occurs rarely. Consequently, I thought that people usually buy mortgaged houses by owing to banks. In my opinion, two factors can mainly affect mortgaged sales: First one is mortgage loan interest rates and the second one is indices of consumer tendency in housing. Owing to a bank to buy a building makes sense when mortgage loan insterest rates decline, vice versa. Also, indices of consumer tendency in housing can be a sign about when people want to buy a building. 
-  The data are taken from Data Delivery System of Central Bank of the Republic of Turkey: EDVS[https://evds2.tcmb.gov.tr/] . There are monthly mortgaged sales statistics, monthly mortgage loans interest rate, and index of consumer tendency in housing between 2013 and 2020. I will first extract and manipulate data, then visualize and analyze the three of them, and build a linear regression model to forecast mortgaged sales statistics in December 2020.
+  First of all, I did not know what mortgaged housing sale is when I was assigned this topic. My starting point was to research into news and blogs about mortgaged sales, which are included in References section. Then I called my parents to have more information and verify my findings. I learned that mortgaged sales are a type of housing sales which buyer can lose the mortgaged building when they can not pay their debts. Buyers generally take out mortgage loans from a bank to buy a building and bank mortgages the building as assurance in case of insolvency. A mortgaged house cannot be sold until it is released, but second hand sales occur by changing the mortgagor. This procedure does not seem safe, so real estate websites do not suggest that. Also, this procedure occurs rarely. Consequently, I thought that people usually buy mortgaged houses by owing to banks. In my opinion, two factors can mainly affect mortgaged sales: First one is mortgage loan interest rates and the second one is indices of consumer tendency in housing. Owing to a bank to buy a building makes sense when mortgage loan interest rates decline, vice versa. Also, indices of consumer tendency in housing can be a sign about when people want to buy a building. 
+  The data are taken from Data Delivery System of Central Bank of the Republic of Turkey: [EDVS](https://evds2.tcmb.gov.tr/) . There are monthly mortgaged sales statistics, monthly mortgage loans interest rate, and index of consumer tendency in housing between 2013 and 2020. I will first extract and manipulate data, then visualize and analyze the three of them, and build a linear regression model to forecast mortgaged sales statistics in December 2020.
   
 # Manipulation of Data
 
-  I firstly did manipulation, such as deleting Turkish characters in rows and unnecessary notes, of the data in Excel. I changed data format into data.table, and changed date values format from character into Date. Therefore, I pasted "-01" at the end of all months. For examplei 1st of March represents the whole month -March. For more information, my Rmd file with code chunks is in Appendix. The structure and first entries of mortgaged sales statistics are below.
+  I firstly did manipulation, such as deleting Turkish characters in rows and unnecessary notes, of the data in Excel. I changed data format into data.table, and changed date values format from character into Date. Therefore, I pasted "-01" at the end of all months. For example, 1st of March represents the whole month -March. For more information, my Rmd file with code chunks is in Appendix. The structure and first entries of mortgaged sales statistics are below.
 
 ```{r, echo=FALSE,message=FALSE}
 library(readxl)
@@ -42,7 +42,7 @@ ggplot(sales_mortgaged,aes(x=Date))+
   
 ```
 
-  Graph has stationary mean and slightly increasing variance with a little seasonality until the middle of 2018. After that, some huge drops and increases break stationarity. Also, we have a gigantic outlier in August 2020 due to the interest discount in mortgage loans for pandemic. This discount has to be judged by considering the inflation.
+  Graph has stationary mean and slightly increasing variance with a little seasonality until the middle of 2018. After that, some huge drops and increases break stationarity. Also, we have an outlier in August 2020 due to the interest discount in mortgage loans for pandemic. This discounted value seems like interest rate in 2013, but it has to be judged by considering the inflation.
   Second graph is for interests in mortgage loans having monthly values between January 2013 and January 2021. This data will be used as independent values in linear model. Therefore, information in December 2020 is needed.
 
 ```{r, echo=FALSE}
@@ -52,8 +52,8 @@ ggplot(mortgage_loan_interest,aes(x=Date))+
 
 ```
 
-  These data are less stationary than the first one, having more jumps after 2018. Remarkable values in 2019 and 2020 differ opposite to Morthgaged Sales, so I expect a negative correlation. Between 2014-2018, autocorrelation can be seen in every 24 months. 
-  Third graph shows the indices of consumer tendency in housing which are estimated by surveys. These numbers are participants' rate of the probabilty of buying or constructing a building in next 12 months.
+  These data are less stationary than the first one, having more jumps after 2018. Remarkable values in 2019 and 2020 differ opposite to Mortgaged Sales, so I expect a negative correlation. Between 2014-2018, auto correlation can be seen in every 24 months. 
+  Third graph shows the indices of consumer tendency in housing which are estimated by surveys. These numbers are participants' rate of the probability of buying or constructing a building in next 12 months.
   
 ```{r, echo = FALSE}
 ggplot(tendency_housing,aes(x=Date))+
@@ -118,7 +118,7 @@ summary(fit)
 checkresiduals(fit)
 ```
 
-  Hoping that I have better result, I added indices of tendency into my linear model.
+  According to residual standard error and adjusted R-squared, the interest in mortgage loan as an independent variable improved the linear model. Hoping that I have better result, I added indices of tendency into my linear model.
   
 ```{r, message = FALSE}
 
@@ -127,9 +127,19 @@ summary(fit)
 checkresiduals(fit)
 ```
 
-  According to residual standard error and adjusted R-squared, it looks like I achieved a sufficient linear model. Distribution of residuals seem like white noise with some outliers. If I try to delete these outliers, my model may encounter to overfitting.
+
+
+  According to residual standard error and adjusted R-squared, it looks like I achieved a sufficient linear model. Distribution of residuals seem like white noise with some outliers. If I try to delete these outliers, my model may encounter to overfitting. I do not have test data for further examination, so I cannot detect whether the model has problem of overfitting or not.
   
-# Conclusion
+# Prediction
+
+  Here is my final model.
+  
+```{r,echo=FALSE}
+summary(fit)
+checkresiduals(fit)
+```
+  
 
   Here is my fitted values of final model and real values below.
 
@@ -154,7 +164,11 @@ plot(fit$residuals,type="l", ylab = "Residuals")
 ```{r,message =FALSE}
 estimated_val <- exp(12.272350 -0.119225*mortgage_loan_interest$interest_rate[96] + -0.049842*tendency_housing$tendency[96] + 0.204184)
 print(estimated_val)
+
 ```
+# Conclusion
+
+  In this study, I tried to predict mortgaged sales statistics using a linear regression model. Firstly, I analyzed data for three measures visually, the first one was mortgaged sales, the second one was mortgage loan interests, and the third one was tendency to housing sales. I adjusted seasonality components and variance for my first dataset in order to make my time series stationary. Adding a trend variable from November 2018 to July 2020 could not make my model more accurate, so I decided to delete trend component. Adding redundant variables would harm my model and time series modeling approach. After that, I started to add independent variables to the model. I found that mortgaged sales are negatively correlated with mortgage loan interests and positively related with housing tendency index. These two independent variables helped my model reduce its residual standard error and residuals seem like White Noise except some outliers. Finally, I put my fitted values and actual values to compare them. My prediction for mortgaged housing sales in December 2020 was  19285.46 calculated by coefficients in the linear model. 
 
 # Appendix
 
