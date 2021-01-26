@@ -11,3 +11,6 @@
 
 ## Homework 3 (10/01/2021)
 [Here](files\hw3\HW3.html) is my forecasting for mortgaged sales statistics.
+
+## Homework 4 (26/01/2021)
+[Here](files\hw4\HW4.html) is prediction for electricity consumption data.
