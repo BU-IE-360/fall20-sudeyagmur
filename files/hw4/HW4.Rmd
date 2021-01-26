@@ -1,0 +1,152 @@
+```{r setup, echo=FALSE, message=FALSE}
+library(readr)
+library(data.table)
+library(ggplot2)
+library(urca)
+library(stats)
+library(forecast)
+```
+# Stationarity of Turkish Electricity Consumption Data
+### Sude Yağmur Öztürk - 26.01.2021
+
+## Introduction
+  The aim of this study is to transform Turkish electricity consumption data to get a stationary data and to make predictions by using the transformed data. Consumption data is publicly available in [EPİAŞ Transparency Platform](https://seffaflik.epias.com.tr/transparency/). Making models and forecasting future consumption data is important because pricing strategy is determined by bids from electricty distribution companies. Stationary time series means that the mean or variance of the data do not change over time. We generally use regressions in forecasting models and stationarity is prerequisite for using regression. That is why we must transform the data to make it as stationary as possible. In order to do this, we have several tools such as power/log transformations, Box-Cox transformations, decomposition, and differencing.
+  Consumption data between 01.01.2017 and 08.01.2021 will be used as training data. I will try to make this data stationary and apply an ARMA model. Consumption data between 09.01.2021 and 23.01.2021 will be used as test data. I will predict the consumption amounts in these dates by ARMA model I constructed and compare the predicted values to real ones by some statistical methods. 
+  
+## Data Manipulation
+  First, I need to read the data downloaded as .csv file and apply some manipulations. Please note that comma was used as decimal point and full stop was used to spare thousands. R did not read commas and it read full stop as a decimal point, so multiplying each row with 1000 solved this problem. 
+  In addition, the data show hourly consumptions and I need daily ones. That is why I simply take the average of each day. Summing hourly consumptions up would also work, but I would have to deal with larger numbers.
+
+```{r, echo =TRUE, message=FALSE}
+hourly_cons <- as.data.table(read_csv("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/training-01012017-08012021.csv"))
+names(hourly_cons) <- c("date","hour","consumption")
+hourly_cons[,date:= as.Date(date,format = "%d.%m.%Y")][,hour := rep(seq(0,23,by=1),times = .N/24)]
+hourly_cons[,consumption := consumption*1000]
+
+daily_cons <- hourly_cons[,.(mean_consumption = mean(consumption)),date]
+head(daily_cons)
+```
+
+## Stationarity
+  Visual inspection is a good way to start. Here is daily consumption data.
+
+```{r, echo=FALSE}
+ggplot(daily_cons, aes(x=date, y= mean_consumption)) + geom_line(color="purple") + theme_minimal() +
+  labs(title = "Daily Electricity Consumption in Turkey(2017-2021)", x = "Date", y= "Average Consumption (MWh)")
+```
+
+  Obviously, there is a seasonality in the series that changes the mean during years. There is a decline in the first half of each year, and two increases in the middle and at the end of years. These changes might come from temperature levels. In the beginning of 2020, there is an exceptional decrease in consumption. It may be caused by lockdowns and decrease in production during pandemic. There are also many outliers which break the stationary variance and mean, resulting from national and religious holidays. Extracting month information can make our series stationary. Auto correlation and partial auto correlation functions will help us to understand relationships that affect stationarity.
+  
+```{r, echo = FALSE}
+acf(daily_cons$mean_consumption, main= "Autocorrelation Function of Daily Electricity Consumption")
+pacf(daily_cons$mean_consumption,main= " Partial Autocorrelation Function of Daily Electricity Consumption")
+```
+  
+  According to ACF, there is positive autocorrelation at lag 1 and remarkable one at lag 7 due to strong weekly seasonality. Differencing at lag 1 and lag 7 can make series stationary to a large extent. However, when forecasting is considered, it is a necessity to take into account which values to add or substract to delete weekly effect. According to PACF, there is a huge positive partial autocorrelation at lag 1 and suddenly drops at lag 2, this means that we must take into account differencing at lag 1. Negative partial autocorrelations at lag 8, 15, and 22 can be seen. These have 7 lags between them, so it can be an effect of weekly seasonality.
+  After visual inspection, let's use some statictical test. Here are KPSS unit root test and Ljung-Box tests for consumption data.
+  
+```{r, echo = FALSE}
+summary(ur.kpss(daily_cons$mean_consumption))
+Box.test(daily_cons$mean_consumption, lag=1, type="Ljung-Box")
+Box.test(daily_cons$mean_consumption, lag=7, type="Ljung-Box")
+```
+  This KPSS test-statistic is lower than all critical points. Therefore, it fails to reject the null hypothesis that "The series is stationary" at any of the significance levels. But Ljong-Box tests' p-value suggest that there is a correlation at lag 1 and lag 7.   
+  To fix the correlations at lags, first I will try to delete the day of week effect. I will take overall mean of each day and create a new column which called day_effect. After, I will take overall mean of each month and create a new column which called month_effect. These columns will be used to delete weekly and possible monthly effects. For adjusting, I will substract weekly and monthly averages from real numbers and add the mean of total consumption data intead of effects. 
+  
+```{r, echo = TRUE}
+total_mean <- mean(daily_cons$mean_consumption)
+daily_cons[,wday := as.factor(weekdays(date))][,day_effect := mean(mean_consumption),by=wday]
+daily_cons[,month := as.factor(month(date))][,month_effect := mean(mean_consumption),by=month]
+daily_cons[,adjusted_consumption := mean_consumption - day_effect - month_effect + 2*total_mean]
+
+```
+```{r, echo= FALSE}
+ggplot(daily_cons, aes(x=date, y= adjusted_consumption)) + geom_line(color="purple") + theme_minimal() +
+  labs(title = "Adjusted Daily Electricity Consumption in Turkey(2017-2021)", x = "Date", y= "Average Consumption (MWh)")
+acf(daily_cons$adjusted_consumption,main= "Autocorrelation Function of Adjusted Daily Electricity Consumption")
+```
+  It can be seen that still there is a need for differencing at lag 1, from plot and ACF. I will create new column called differ to add difference at lag 1.
+
+```{r, echo = TRUE}
+daily_cons[,differ := adjusted_consumption - shift(adjusted_consumption,1)]
+```
+```{r, echo = FALSE,message=FALSE}
+ggplot(daily_cons, aes(x=date, y= differ)) + geom_line(color="purple") + theme_minimal() +
+  labs(title = "Adjusted Daily Electricity Consumption in Turkey(2017-2021)", x = "Date", y= "Average Consumption (MWh)")
+acf(daily_cons$differ[-1],main= "Autocorrelation Function of Adjusted Daily Electricity Consumption")
+pacf(daily_cons$differ[-1],main= "Partial Autocorrelation Function of Adjusted Daily Electricity Consumption")
+```
+  From plot and ACF, we can say that we have considerably stationary series with many outliers. Negative partial auto correlations in PACF can be handled if outliers had deleted or changed. However, outliers needs further investigation to handle them. Let's check whether our series is stationary with KPSS unit root test.
+
+```{r, echo = FALSE}
+summary(ur.kpss(daily_cons$differ))
+```
+ Now, the time series with lower KPSS test statistic is better than where we start. Stationarity assumption for a forecasting model is handled.
+ 
+## Forecasting Model
+  It is time to use auto.arima function to make an ARIMA model for our stationary series. Also, we can see if more differencing is needed.
+
+```{r, echo = FALSE}
+arimamodel <- auto.arima(daily_cons$differ,seasonal=F,trace=T)
+arimamodel
+```
+  The function suggests that model which will be used must be ARIMA model with parameters (2,0,1). This means we have autoregressive model of order 2 plus moving-average model of order 1. There will be no need to difference. The fitting indicators for model such as AIC, AICc, and BIC could be less if outliers were less.
+  We need to test our model with new data, so I will use consumption data between 09.01.2021 and 23.01.2021. I will make same manipulations as before when reading it from .csv file.
+
+```{r, echo = FALSE}
+test_data <- as.data.table(read_csv("C:/Users/Lenovo/Desktop/UZAKTAN BOGAZICI/IE360/test-09012021-23012021.csv"))
+names(test_data) <- c("date","hour","consumption")
+test_data[,date:= as.Date(date,format = "%d.%m.%Y")][,hour := rep(seq(0,23,by=1),times = .N/24)]
+test_data[,consumption := consumption*1000]
+daily_test <- test_data[,.(mean_consumption = mean(consumption)),date]
+head(daily_test)
+```
+  I will use ARIMA(2,0,1) model to forecast next 15 days. After that, I will manipulate these values to reverse my operations while making series stationary. This yields my forecasted values to actual predictions for consumption data.
+  
+```{r, echo = FALSE}
+forecasted <- forecast(arimamodel, h = 15)
+print(forecasted)
+prediction <- rep(0, length.out = 15)
+prediction[1] <- forecasted$mean[1] + daily_cons$adjusted_consumption[nrow(daily_cons)]
+for (i in 2:15){
+  prediction[i] <- prediction[i-1]+forecasted$mean[i]
+}
+prediction <- prediction - 2*total_mean
+prediction <- prediction + daily_cons$day_effect[7:21]
+prediction <- prediction + daily_cons$month_effect[1]
+
+prediction <- as.data.table(prediction)
+date <- as.Date('2021-01-09')
+for(k in 2:15){
+  date[k] <- date[k-1]+1
+}
+date <- as.data.table(date)
+prediction <- cbind(date, prediction)
+print(prediction)
+```
+
+## Conclusion
+  Every forecasting model will have predicted values different than real values, slightly or significant. To check that, we can plot residuals and get some help from statistics. Here is the plot of resiudal, value of bias, MAPE and WMAPE.
+
+```{r, echo = FALSE}
+prediction[,actual := daily_test$mean_consumption]
+prediction[,error := actual - prediction]
+
+bias <- sum(prediction$error)/15
+mape <- sum(abs(prediction$error/prediction$actual))/15
+wmape <- sum(abs(prediction$error)/prediction$actual)*100*prediction$actual/sum(prediction$actual)
+prediction[,wmape_percentage := wmape]
+print(prediction)
+print(cbind(bias,mape))
+
+```
+
+## Appendix
+
+[Rmd File](\fall20-sudeyagmur\files\hw4\HW4.Rmd)
+  
+  
+
+
+
+
