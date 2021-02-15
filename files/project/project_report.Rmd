@@ -1,0 +1,279 @@
+---
+title: "IE360ProjectReport"
+output:
+  html_document:
+    theme: yeti
+    toc: true
+    toc_depth: 3
+    toc_float: true
+  pdf_document: default
+---
+
+
+## Electricity Consumption Forecasting
+Group 1 - Dorukhan Kılınç - Sude Yağmur Öztürk
+
+# 1. Introduction
+
+## 1.1 Problem Definition
+
+  Forecasting electricity consumption in the future is a key to designate the price in Turkish electricity market. Electricity distribution companies need to have reliable forecasting models in order to bid the precise electricity price. [EPİAŞ Transparency Platform](https://seffaflik.epias.com.tr/transparency/) reveals past hour's realized consumption data and estimated values for future hours. Therefore, the data is accessible for everyone through this platform.
+  
+  In this project, our aim is to develop a forecasting product to predict the hourly electricity consumption in Turkey. Each day, we were expected to submit 24 predictions for each hour's electricity consumption values of the next day using the data until the previous day, via API. Also, this API compared each group's predictions with real consumption values. Each group was evaluated and ranked by the weighted mean absolute percentage errors (WMAPE) of their predictions, every day. At the end of this two-week challenge period, the overall scores show the accuracy of the groups. The prediction period started at 29th January 2021 and ended at 12nd February 2021.
+
+## 1.2 Summary of Proposed Approach
+
+  As a starting point, we have analyzed the training data and tried to find out the features which break stationarity, such as trend, moving average, and seasonality. To stationarize the data, we have tried out the methods that we have learned from the course and used in previous assignments. We have done some research about forecasting electricity consumption, and approaches which are used before. We have searched the external factors that can affect electricity consumption, and analyzed the correlation between external factors afterwards. We used temperature data and population as an input. Combining all the knowledge we had, our final forecasting product which will be discussed in detail in later sections includes differencing, linear regression and an ARIMA model.
+
+## 1.3 Descriptive Analysis of Data
+
+  The provided data included hourly consumption levels and the temperature values for 7 locations in Turkey, from 1st January 2017 to 28th January 2021. These 7 points were close to big cities: Antalya/Mersin(T_1), Adana(T_2), Konya(T_3), İzmir(T_4), Eskişehir(T_5), Ankara(T_6), and İstanbul(T_7) respectively. Consumption and temperature data were updated every day through API. Date and hour information were also included. Structure and columns of data table as shown in the figure below:
+
+```{r, warning=FALSE, error=FALSE,message=FALSE, echo=FALSE}
+library(data.table)
+library(knitr)
+library(zoo)
+library(readxl)
+library(corrplot)
+library(ggplot2)
+library(lubridate)
+library(forecast)
+library(urca)
+
+hourly_consumption<- as.data.table(read.csv(file='proj.csv'))
+names(hourly_consumption) = c("Date", "Hour", "Consumption","T1","T2","T3","T4","T5","T6","T7")
+
+hourly_consumption$Date = as.Date(factor(hourly_consumption$Date), format = "%Y-%m-%d")
+hourly_consumption$Hour = rep(c(0:23), times = nrow(hourly_consumption)/24)
+hourly_consumption[,Consumption:=as.numeric(Consumption)]
+
+add = as.data.table(read_excel("b.xlsx", range = "A1:K841"))
+add[,...1:=NULL]
+names(add) = c("Date", "Hour", "Consumption","T1","T2","T3","T4","T5","T6","T7")
+add$Date <- as.Date(factor(add$Date), format = "%Y-%m-%d")
+hourly_consumption = rbind(hourly_consumption, add)
+
+str(hourly_consumption)
+head(hourly_consumption)
+```
+
+  Consumption data have changing mean and variance due to seasonality and temperature, also many outliers because of national and religious holidays, and weekends. These features need to be treated when forecasting. After March 2020, there is an abnormal decline and predicting the real values was getting harder due to new conditions of pandemic. Here is the plot of consumption data:
+  
+```{r,echo=FALSE}
+
+ggplot(data = hourly_consumption, aes(x = Date)) + geom_line(aes(y=Consumption)) + theme_minimal()+ ggtitle("Hourly Consumption") 
+```
+
+  Not surprisingly, autocorrelation between every 24 hours indicates that each day's consumption is related to the day before. Consumption differences in daytime and at night can be clearly seen, by declining acf values every 12 hours. ACF of consumption data is shown below:
+  
+```{r,echo=FALSE}
+acf(hourly_consumption$Consumption, main = "Autocorrelation of Hourly Consumption Values")
+```
+
+  Correlation between temperature and consumption is not linear as seen below. There is a minimum-consuming value (like 13 degrees), consumption increases when temperature is lower or higher than this value. Also, colder days have more consumption values variance than hotter days:
+  
+```{r, echo=FALSE}
+ggplot(data = hourly_consumption, aes(y = Consumption, x = T1)) + geom_point() + theme_minimal() + labs(x = "Temperature") + ggtitle("Consumption vs Temperature")
+```
+
+  However, as it is clear in the above plot, working with hourly data is messy because there are simply so many points. Thus, we will transform the data into daily mean consumption and perform our detailed analysis and manipulation on it. Then, we will transform the daily predictions into hourly again.
+  
+
+# 2. Literature Review
+  According to Ozoh et al. in [A Comparative Analysis of Techniques for Forecasting
+Electricity Consumption](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.678.1098&rep=rep1&type=pdf), the outstanding forecasting approaches with their low prediction errors are autoregressive integrated moving average (ARIMA), artificial neural network(ANN), multiple linear regression (NLR), modified Newton's method, and grey model in general. This article also indicates that GDP, population, import, and export can be considered as socio-economic indicators when estimating the energy demand of Turkey. 
+
+  According to Bianco et al. in [Electricity consumption forecasting in Italy using linear regression models](https://www.sciencedirect.com/science/article/pii/S0360544209002539?casa_token=L4xCypUgeD4AAAAA:DFzI9dNQavCCu2KkKZy5QMdLK8y0ZIy9DCr1mj5WSdAIJw3JkFQ8EW2DGITu4Jiqx9Ev9p1afzA), electricity consumption in Italy is related to GDP and other production-related indices. Electricity consumption varies in cities in Italy with population and production levels. These values can be input data in linear regression models.
+  
+  According to Mohamed and Bodger in [Forecasting electricity consumption in New Zealand using economic and demographic variables](https://www.sciencedirect.com/science/article/pii/S0360544204003639?casa_token=0lDk9r_5Sw4AAAAA:9DkFChxZXPlKjZh4eXkoedWQZn_-mz6aJVwb-k7BS0Zi4SyDZRHd_X8GoDIHv8FWPXwc0BMgY3U), multiple linear regression using economic indices and population is also convenient for forecasting electricity consumption in New Zealand.
+  
+  Interestingly, according to Kaytez et al. in [Forecasting electricity consumption: A comparison of regression analysis, neural networks and least squares support vector machines](https://www.sciencedirect.com/science/article/pii/S0142061514007637?casa_token=UTvNgGyLmggAAAAA:wdHdYAtRlSrBW5JVMlkVtbFIsRyU9tIBa7rbIzCcnITPubjZ-2bn_ECv9BWbpBZqCERqAPRUw78), there is a negative relationship between the consumption levels and GDP in Turkey. This article shows that there is a unidirectional relationship between electricity consumption and GDP. This means that an increase in electricity consumption is observed even in periods of low GDP. Therefore, using GDP as an input can be controversial for our case. 
+  
+  After the literature review, we concluded that linear regression and ARIMA methods which we learned in the course can give us a forecasting product that is precise enough. Also, we decided to mix hourly temperature values and population together to have an input variable which considers demographic structure.
+
+# 3. Solution Approach
+
+  By considering our initial analysis, we wanted to work with the daily mean consumption, forecast the next day's mean consumption and transform it into hourly values. In addition, we  incorporated hourly temperature values of the 7 cities by taking their weighted average with respect to their populations. Then, we selected the maximum temperature for each day. Lastly, we will handle outliers such as religious holidays by replacing them with the average of the consumption values one week before and after. National holidays were defined for every year. If the next day or the day before a national holiday coincides with a Monday or Friday, we also treated them as holiday. We defined religious holidays for each year separately because they change every year. 
+
+```{r, echo=FALSE}
+N = c(2511700,2237940,232374,4367251,887475,5639076,15519267)
+hourly_consumption[, Tnet := (T1*N[1]+T2*N[2]+T3*N[3]+T4*N[4]+T5*N[5]+T6*N[6]+T7*N[7])/sum(N)]
+daily_consumption=hourly_consumption[,list(mean_consumption=mean(Consumption, na.rm = T), Tn = max(Tnet)),by=list(Date)]
+daily_consumption[, month:=month(Date)]
+daily_consumption[, index:=1:.N]
+daily_consumption[, weekday:=(index%%7)]
+
+daily_consumption[,special:=0]
+
+daily_consumption[(((month(Date)==4 & day(Date)==23)|(month(Date)==5 & day(Date)==19)|(month(Date)==7 & day(Date)==15)|
+                    (month(Date)==8 & day(Date)==30)|(month(Date)==10 & day(Date)==29))&weekday!=1&weekday!=0), special:=1]
+
+daily_consumption[(((month(Date)==4 & day(Date)==24)|(month(Date)==5 & day(Date)==20)|(month(Date)==7 & day(Date)==16)|
+                    (month(Date)==8 & day(Date)==31)|(month(Date)==10 & day(Date)==30))&weekday==6), special:=1]
+
+daily_consumption[(((month(Date)==4 & day(Date)==22)|(month(Date)==5 & day(Date)==18)|(month(Date)==7 & day(Date)==14)|
+                    (month(Date)==8 & day(Date)==29)|(month(Date)==10 & day(Date)==28))&weekday==2), special:=1]
+
+daily_consumption[(((month(Date)==6 & day(Date)==26)|(month(Date)==6 & day(Date)==27)|(month(Date)==8 & day(Date)==31)|
+                    (month(Date)==9 & day(Date)==1)|(month(Date)==9 & day(Date)==1))&weekday!=1&weekday!=0&year(Date)==2017), special:=1]
+
+daily_consumption[(((month(Date)==6 & day(Date)==14)|(month(Date)==6 & day(Date)==15)|(month(Date)==8 & day(Date)==20)|
+                    (month(Date)==8 & day(Date)==21)|(month(Date)==8 & day(Date)==22)|(month(Date)==8 & day(Date)==23)|
+                    (month(Date)==8 & day(Date)==24))&weekday!=1&weekday!=0&year(Date)==2018), special:=1]
+
+daily_consumption[(((month(Date)==6 & day(Date)==3)|(month(Date)==6 & day(Date)==4)|(month(Date)==6 & day(Date)==5)|
+                    (month(Date)==6 & day(Date)==6)|(month(Date)==6 & day(Date)==7)|(month(Date)==8 & day(Date)==12)|
+                    (month(Date)==8 & day(Date)==13)|(month(Date)==8 & day(Date)==14))&weekday!=1&weekday!=0&year(Date)==2019), special:=1]
+
+daily_consumption[(((month(Date)==5 & day(Date)==25)|(month(Date)==5 & day(Date)==26)|(month(Date)==7 & day(Date)==30)|
+                    (month(Date)==7 & day(Date)==31)|(month(Date)==8 & day(Date)==8))&weekday!=1&weekday!=0&year(Date)==2020), special:=1]
+daily_consumption[(month(Date)==1&day(Date)==1)&weekday!=1&weekday!=0, special:=1]
+
+daily_consumption[,normal:=mean_consumption]
+daily_consumption[, lag7 := shift(daily_consumption$mean_consumption, 7)]
+daily_consumption[,week_after:=shift(mean_consumption,-7)]
+daily_consumption[special==1, normal:=(lag7+week_after)/2]
+```
+
+
+  Head of the new data table and the plot of temperature and daily mean consumption are shown below. The column "Tn" is the maximum of demographically weighted average daily temperature. "index" column is the number of they and it is used to determine the "weekday". "normal" has the same value with "mean_consumption" if it is not a special day (special == 0), otherwise it has the average of next week's value (week_after) and previous week's value (lag7):  
+
+```{r, echo=FALSE}
+head(daily_consumption)
+ggplot(data = daily_consumption, aes(x = Tn, y =normal)) + geom_point() + theme_minimal() + labs(x = "Temperature", y = "Daily Mean Consumption") + 
+  ggtitle("Daily Mean Consumption vs Temperature")
+```
+
+  It is more clear when we transform the data into daily means that there is an absolute value-like relationship taking a minimum value around 18 degrees between daily mean consumption and temperature. Our linear regression model will include temperature by considering the absolute value of the difference between temperature values and a critical value, which we will set as 18 degrees.
+
+  However, before regression analysis, we should take a closer look into the autocorrelation function since we could only see 48 hours' values before.
+
+```{r, echo =FALSE}
+acf(daily_consumption$mean_consumption, main = "Autocorrelation of Daily Mean Consumption Values")
+```
+
+  By looking at the autocorrelation function, we can say that there exists a high autocorrelation at lag 1 and 7. We will handle these autocorrelations working with the differences at lag 1 and using weekdays as factors in the regression model. Therefore, our linear regression will consist of the absolute value of the difference between demographically weighted temperature mean and the critical temperature and weekdays as factors. Here are the summary of our linear regression model and the result of the KPSS root test applied to the residuals of the model below: 
+
+```{r, echo = FALSE}
+daily_consumption[, diff1 := c(NA,diff(mean_consumption,1))]
+
+Tcrit = 18
+daily_consumption[, Tlow := (Tn<Tcrit)*abs(Tn-Tcrit)]
+daily_consumption[, Thigh := (Tn>=Tcrit)*abs(Tn-Tcrit)]
+
+fit = lm(formula = diff1 ~ as.factor(weekday)+Tlow+Thigh,data = daily_consumption)
+
+summary(fit)
+fit$residuals%>%ur.kpss()%>%summary()
+```
+
+  We can see that all regressor variables are statistically relevant by looking at each of the p values. In addition, value of the KPSS test-statistic is lower than all the critical values, meaning that we can not reject the null hypothesis that the residuals of the linear regression model are stationary at any of the significance levels. This is a result we wanted to achieve because now we can model the residuals with an ARIMA model. To find the appropriate ARIMA model, we used auto.arima function.
+
+```{r, echo=FALSE}
+daily_consumption[,res:=c(NA,fit$residuals)]
+model = auto.arima(daily_consumption$res, seasonal = F)
+summary(model)
+```
+
+  The model auto.arima function came up with consists 2 autoregressive and 1 moving average terms. Now that we also have a model for the residuals we can predict the next day's mean electricity consumption and transform it into hourly consumption values. Our forecast of the next day's mean consumption will be the sum of the forecast of the residuals, forecast of the difference between next day's and today's mean consumption and today's daily mean consumption value. However, we are not given today's daily mean consumption value. Therefore, we need to forecast today's daily mean consumption as well.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+forecasted = forecast(model,h=2)
+predicted = c(0,0)
+weekday = c(6,0)
+
+Tdata = data.table(read_excel("b.xlsx",range = "B842:K889",col_names = c("Date", "Hour", "Consumption","T1","T2","T3","T4","T5","T6","T7")))
+Tdata[, Tnet := (T1*N[1]+T2*N[2]+T3*N[3]+T4*N[4]+T5*N[5]+T6*N[6]+T7*N[7])/sum(N)]
+
+Tlow = c(18-max(Tdata$Tnet[1:24]),18-max(Tdata$Tnet[25:48]))
+Thigh = c(0,0)
+
+seasonalCom = predict(fit, newdata = as.data.frame(weekday,Tlow,Thigh))
+predicted = predicted + seasonalCom
+
+predicted[1] = predicted[1] + daily_consumption$mean_consumption[nrow(daily_consumption)]
+predicted[2] = predicted[1] + predicted[2]
+
+predicted
+```
+
+  Here above are the forecasts for the daily mean electricity consumption values of 12th and 13th of February. This forecast was for the 13th of February; therefore, we only used the second value. Now, the only thing left to do is to transform this prediction for the daily mean consumption into hourly data. To transform the daily mean to hourly values, we will estimate each hour's ratio to the daily mean by dividing their means. However, each hour's ratio to the daily mean may change during the week. Therefore, for each prediction, we will filter the day while calculating this ratio. For example, to predict the consumption at 13.00, we will use the consumption values of previous Mondays at 13.00.
+
+  Now that we have formed a model to forecast the next day's hourly electricity consumption values, we can move on to the results section. 
+
+# 4. Results and Discussion
+
+```{r, echo=FALSE}
+daily_consumption[, h0:=hourly_consumption[Hour==0,Consumption]]
+daily_consumption[, h1:=hourly_consumption[Hour==1,Consumption]]
+daily_consumption[, h2:=hourly_consumption[Hour==2,Consumption]]
+daily_consumption[, h3:=hourly_consumption[Hour==3,Consumption]]
+daily_consumption[, h4:=hourly_consumption[Hour==4,Consumption]]
+daily_consumption[, h5:=hourly_consumption[Hour==5,Consumption]]
+daily_consumption[, h6:=hourly_consumption[Hour==6,Consumption]]
+daily_consumption[, h7:=hourly_consumption[Hour==7,Consumption]]
+daily_consumption[, h8:=hourly_consumption[Hour==8,Consumption]]
+daily_consumption[, h9:=hourly_consumption[Hour==9,Consumption]]
+daily_consumption[, h10:=hourly_consumption[Hour==10,Consumption]]     
+daily_consumption[, h11:=hourly_consumption[Hour==11,Consumption]]  
+daily_consumption[, h12:=hourly_consumption[Hour==12,Consumption]]
+daily_consumption[, h13:=hourly_consumption[Hour==13,Consumption]]
+daily_consumption[, h14:=hourly_consumption[Hour==14,Consumption]]
+daily_consumption[, h15:=hourly_consumption[Hour==15,Consumption]]
+daily_consumption[, h16:=hourly_consumption[Hour==16,Consumption]]
+daily_consumption[, h17:=hourly_consumption[Hour==17,Consumption]]
+daily_consumption[, h18:=hourly_consumption[Hour==18,Consumption]]
+daily_consumption[, h19:=hourly_consumption[Hour==19,Consumption]]
+daily_consumption[, h20:=hourly_consumption[Hour==20,Consumption]]
+daily_consumption[, h21:=hourly_consumption[Hour==21,Consumption]]
+daily_consumption[, h22:=hourly_consumption[Hour==22,Consumption]]
+daily_consumption[, h23:=hourly_consumption[Hour==23,Consumption]]
+
+
+k = rep(0,24)
+
+daily_consumptionA = daily_consumption[weekday == weekday[2]]
+
+k[1] = mean(daily_consumptionA$h0)/(mean(daily_consumptionA$mean_consumption)*24)
+k[2] = mean(daily_consumptionA$h1)/(mean(daily_consumptionA$mean_consumption)*24)
+k[3] = mean(daily_consumptionA$h2)/(mean(daily_consumptionA$mean_consumption)*24)
+k[4] = mean(daily_consumptionA$h3)/(mean(daily_consumptionA$mean_consumption)*24)
+k[5] = mean(daily_consumptionA$h4)/(mean(daily_consumptionA$mean_consumption)*24)
+k[6] = mean(daily_consumptionA$h5)/(mean(daily_consumptionA$mean_consumption)*24)
+k[7] = mean(daily_consumptionA$h6)/(mean(daily_consumptionA$mean_consumption)*24)
+k[8] = mean(daily_consumptionA$h7)/(mean(daily_consumptionA$mean_consumption)*24)
+k[9] = mean(daily_consumptionA$h8)/(mean(daily_consumptionA$mean_consumption)*24)
+k[10] = mean(daily_consumptionA$h9)/(mean(daily_consumptionA$mean_consumption)*24)
+k[11] = mean(daily_consumptionA$h10)/(mean(daily_consumptionA$mean_consumption)*24)
+k[12] = mean(daily_consumptionA$h11)/(mean(daily_consumptionA$mean_consumption)*24)
+k[13] = mean(daily_consumptionA$h12)/(mean(daily_consumptionA$mean_consumption)*24)
+k[14] = mean(daily_consumptionA$h13)/(mean(daily_consumptionA$mean_consumption)*24)
+k[15] = mean(daily_consumptionA$h14)/(mean(daily_consumptionA$mean_consumption)*24)
+k[16] = mean(daily_consumptionA$h15)/(mean(daily_consumptionA$mean_consumption)*24)
+k[17] = mean(daily_consumptionA$h16)/(mean(daily_consumptionA$mean_consumption)*24)
+k[18] = mean(daily_consumptionA$h17)/(mean(daily_consumptionA$mean_consumption)*24)
+k[19] = mean(daily_consumptionA$h18)/(mean(daily_consumptionA$mean_consumption)*24)
+k[20] = mean(daily_consumptionA$h19)/(mean(daily_consumptionA$mean_consumption)*24)
+k[21] = mean(daily_consumptionA$h20)/(mean(daily_consumptionA$mean_consumption)*24)
+k[22] = mean(daily_consumptionA$h21)/(mean(daily_consumptionA$mean_consumption)*24)
+k[23] = mean(daily_consumptionA$h22)/(mean(daily_consumptionA$mean_consumption)*24)
+k[24] = mean(daily_consumptionA$h23)/(mean(daily_consumptionA$mean_consumption)*24)
+
+p=k*24*predicted[2]
+p
+```
+
+  Here above are the predictions for hourly electricity consumption values for 13th of February. After the dataset was updated each day, we added the last day's consumption data to the training data. Therefore, although small, we ensured our model improved each day. In addition, in some days, we were not provided the yesterday's consumption values. In such days, we also predicted yesterday's values.  
+  There are several ways to get better results, and lower WMAPE values. Firstly, a more detailed literature search may result in addition of a new independent variable into the linear regression model such as weather condition or daylight. Temperature measurements can be increased by including other locations in Turkey. A non-linear relationship between consumption and temperature can be handled with polynomial term such as x squared, instead of absolute value. Secondly, instead of forecasting daily means, each hour can be separately modeled. This treatment would also change the approach to outlier values. Thirdly, the effects of pandemic could be included the model in order to have better understanding the values in 2020 and to make better predictions for the beginning of 2021.
+
+
+# 5. Conclusion and Future Work
+
+  In conclusion, we developed a forecasting product for hourly electricity consumption in Turkey. We tried to forecast the next day's hourly consumption using differencing, linear regression and ARIMA models, for a two-week period. Firstly, we grouped the data by taking daily means. Then, to get rid of the high autocorrelation at lag 1, we took the difference at lag 1 and started working on it. There was also a high autocorrelation at lag 7 and we took care of that by adding weekdays as factors to our linear regression model. In addition to weekdays as factors, we also added a demographically weighted mean of the temperature values of the 7 cities to model the effect of temperature. However, the relationship between temperature and electricity consumption was not linear; therefore, we manipulated the temperature by defining partial linear coefficients based on comparing the temperature values with the critical value we chose. After we ensured that we have stationary residuals, we used an ARIMA(2,0,1) model. Then, we forecasted the next day's mean electricity consumption by inversely transforming our predictions from ARIMA(2,0,1) and multiple linear regression. At last, we transformed the prediction for the daily mean into hourly predictions by estimating their ratio to the daily mean.
+
+  As for future work, our model can be improved into a more complex model by using more advanced machine learning methods such as neural networks. Arranging a meeting with one of electricity distribution firm's employee who are responsible for forecasting future electricity consumption values could give a better insight about modeling, resulting in a model like a real-life forecasting product. Also, a pattern for religious holidays may be found to select them as special days automatically. 
+ 
+# 6. Code
+
+[Rmd file with code chunks](project_report.Rmd)
+

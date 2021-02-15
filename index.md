@@ -14,3 +14,6 @@
 
 ## Homework 4 (26/01/2021)
 [Here](files\hw4\HW4.html) is prediction for electricity consumption data.
+
+## Project (15/02/2021)
+[Here](files\project\project_report.html) is project report of Group 1.
